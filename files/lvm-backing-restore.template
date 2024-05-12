@@ -1,0 +1,9 @@
+#!/bin/bash
+LOOP_FILE=%BACKING_FILE%
+
+/sbin/losetup --find --show %DIRECTIO% $LOOP_FILE
+
+LOOP_DEVICE=$(losetup -j $LOOP_FILE | cut -d ':' -f 1 | cut -d '/' -f 3)
+FILTER_STRING="global_filter = [ \"a|$LOOP_DEVICE|\", \"r|.*|\" ]  # from devstack"
+
+sed -i -e '/# from devstack/d' -e "/# global_filter = \[.*\]/a\        $FILTER_STRING" /etc/lvm/lvm.conf

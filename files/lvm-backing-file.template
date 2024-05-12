@@ -6,7 +6,8 @@ Before=lvm2-activation-early.service
 Wants=systemd-udev-settle.service
 
 [Service]
-ExecStart=/sbin/losetup --find --show %DIRECTIO% %BACKING_FILE%
+#ExecStart=/sbin/losetup --find --show %DIRECTIO% %BACKING_FILE%
+ExecStart=/opt/stack/data/venv/bin/%BACKING_RESTORE%
 ExecStop=/bin/sh -c '/sbin/losetup -d $$(/sbin/losetup --associated %BACKING_FILE% -O NAME -n)'
 RemainAfterExit=yes
 Type=oneshot
