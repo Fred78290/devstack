@@ -99,9 +99,22 @@ function _create_lvm_volume_group {
             directio="--direct-io=on"
         fi
 
+        backing_restore=$vg$BACKING_FILE_SUFFIX.sh
+
+        if [[ ! -e $backing_restore ]]; then
+            sed -e "
+                s|%DIRECTIO%|${directio}|g;
+                s|%BACKING_FILE%|${backing_file}|g;
+            " $FILES/lvm-backing-file.template | sudo tee \
+                /opt/stack/data/venv/bin/$vg$BACKING_FILE_SUFFIX.sh
+
+            chmod +$backing_restore
+        fi
+
         # Only create systemd service if it doesn't already exists
         if [[ ! -e "/etc/systemd/system/$vg$BACKING_FILE_SUFFIX.service" ]]; then
             sed -e "
+                s|%BACKING_RESTORE%|/${backing_restore}|g;
                 s|%DIRECTIO%|${directio}|g;
                 s|%BACKING_FILE%|${backing_file}|g;
             " $FILES/lvm-backing-file.template | sudo tee \
