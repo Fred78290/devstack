@@ -1586,13 +1586,18 @@ function write_user_unit_file {
 function write_uwsgi_user_unit_file {
     local service=$1
     local command="$2"
-    local group=$3
-    local user=$4
-    local env_vars="$5"
+    local after="$3"
+    local group=$5
+    local user=$5
+    local env_vars="$6"
     local unitfile="$SYSTEMD_DIR/$service"
     mkdir -p $SYSTEMD_DIR
 
     iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
+    if [[ -n "$after" ]]; then
+        iniset -sudo $unitfile "Unit" "After" "$after"
+    fi
+
     iniset -sudo $unitfile "Service" "Environment" "\"PATH=$PATH\""
     iniset -sudo $unitfile "Service" "SyslogIdentifier" "$service"
     iniset -sudo $unitfile "Service" "User" "$user"
@@ -1663,7 +1668,7 @@ function _run_under_systemd {
         if [[ "$GLOBAL_VENV" == "True" ]] ; then
             cmd="$cmd --venv $DEVSTACK_VENV"
         fi
-        write_uwsgi_user_unit_file $systemd_service "$cmd" "$group" "$user" "$env_vars"
+        write_uwsgi_user_unit_file $systemd_service "$cmd" "$after" "$group" "$user" "$env_vars"
     else
         write_user_unit_file $systemd_service "$cmd" "$after" "$group" "$user" "$env_vars"
     fi
