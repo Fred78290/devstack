@@ -1535,6 +1535,16 @@ function install_bindep {
     fi
 }
 
+function patch_user_unit_file {
+    local service=$1
+    local section="$2"
+    local key="$3"
+    local value=$4
+    local unitfile="$SYSTEMD_DIR/$service"
+
+    iniset -sudo $unitfile "$section" "$key" "$value"
+}
+
 function write_user_unit_file {
     local service=$1
     local command="$2"
