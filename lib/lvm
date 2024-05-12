@@ -105,7 +105,7 @@ function _create_lvm_volume_group {
             sed -e "
                 s|%DIRECTIO%|${directio}|g;
                 s|%BACKING_FILE%|${backing_file}|g;
-            " $FILES/lvm-backing-file-restore.template | sudo tee \
+            " $FILES/lvm-backing-restore.template | sudo tee \
                 /opt/stack/data/venv/bin/$backing_restore
 
             chmod +x /opt/stack/data/venv/bin/$backing_restore
