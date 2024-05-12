@@ -786,7 +786,7 @@ function start_swift {
 
         foreground_services="object container account"
         for type in ${foreground_services}; do
-            run_process s-${type} "$SWIFT_BIN_DIR/swift-${type}-server ${SWIFT_CONF_DIR}/${type}-server/1.conf -v"
+            run_process s-${type} "$SWIFT_BIN_DIR/swift-${type}-server ${SWIFT_CONF_DIR}/${type}-server/1.conf -v" "devstack@keystone.service"
         done
 
         if [[ "$SWIFT_START_ALL_SERVICES" == "True" ]]; then
@@ -795,7 +795,7 @@ function start_swift {
             # The container-sync daemon is strictly needed to pass the container
             # sync Tempest tests.
             enable_service s-container-sync
-            run_process s-container-sync "$SWIFT_BIN_DIR/swift-container-sync ${SWIFT_CONF_DIR}/container-server/1.conf"
+            run_process s-container-sync "$SWIFT_BIN_DIR/swift-container-sync ${SWIFT_CONF_DIR}/container-server/1.conf" "devstack@keystone.service"
         fi
     else
         $SWIFT_BIN_DIR/swift-init --run-dir=${SWIFT_DATA_DIR}/run all restart || true
@@ -806,7 +806,7 @@ function start_swift {
         local proxy_port=${SWIFT_DEFAULT_BIND_PORT}
         start_tls_proxy swift '*' $proxy_port $SERVICE_HOST $SWIFT_DEFAULT_BIND_PORT_INT $SWIFT_MAX_HEADER_SIZE
     fi
-    run_process s-proxy "$SWIFT_BIN_DIR/swift-proxy-server ${SWIFT_CONF_DIR}/proxy-server.conf -v"
+    run_process s-proxy "$SWIFT_BIN_DIR/swift-proxy-server ${SWIFT_CONF_DIR}/proxy-server.conf -v" "devstack@keystone.service"
 
     # We also started the storage services, but proxy started last and
     # will take the longest to start, so by the time it comes up, we're

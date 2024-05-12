@@ -631,12 +631,12 @@ function start_neutron_service_and_check {
     # Start the Neutron service
     if [ "$NEUTRON_DEPLOY_MOD_WSGI" == "True" ]; then
         enable_service neutron-api
-        run_process neutron-api "$(which uwsgi) --procname-prefix neutron-api --ini $NEUTRON_UWSGI_CONF"
+        run_process neutron-api "$(which uwsgi) --procname-prefix neutron-api --ini $NEUTRON_UWSGI_CONF" "devstack@etcd.service"
         neutron_url=$Q_PROTOCOL://$Q_HOST/
         enable_service neutron-rpc-server
         run_process neutron-rpc-server "$NEUTRON_BIN_DIR/neutron-rpc-server $cfg_file_options"
     else
-        run_process q-svc "$NEUTRON_BIN_DIR/neutron-server $cfg_file_options"
+        run_process q-svc "$NEUTRON_BIN_DIR/neutron-server $cfg_file_options" "devstack@etcd.service"
         neutron_url=$service_protocol://$Q_HOST:$service_port/
         # Start proxy if enabled
         if is_service_enabled tls-proxy; then
@@ -660,7 +660,7 @@ function start_neutron {
 # Control of the l2 agent is separated out to make it easier to test partial
 # upgrades (everything upgraded except the L2 agent)
 function start_l2_agent {
-    run_process q-agt "$AGENT_BINARY --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE"
+    run_process q-agt "$AGENT_BINARY --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE" "devstack@q-svc.service"
 
     if is_provider_network && [[ $Q_AGENT == "openvswitch" ]]; then
         sudo ovs-vsctl --no-wait -- --may-exist add-port $OVS_PHYSICAL_BRIDGE $PUBLIC_INTERFACE
@@ -678,12 +678,12 @@ function start_l2_agent {
 }
 
 function start_other_agents {
-    run_process q-dhcp "$AGENT_DHCP_BINARY --config-file $NEUTRON_CONF --config-file $Q_DHCP_CONF_FILE"
+    run_process q-dhcp "$AGENT_DHCP_BINARY --config-file $NEUTRON_CONF --config-file $Q_DHCP_CONF_FILE" "devstack@q-svc.service"
 
-    run_process q-l3 "$AGENT_L3_BINARY $(determine_config_files neutron-l3-agent)"
+    run_process q-l3 "$AGENT_L3_BINARY $(determine_config_files neutron-l3-agent)" "devstack@q-svc.service"
 
-    run_process q-meta "$AGENT_META_BINARY --config-file $NEUTRON_CONF --config-file $Q_META_CONF_FILE"
-    run_process q-metering "$AGENT_METERING_BINARY --config-file $NEUTRON_CONF --config-file $METERING_AGENT_CONF_FILENAME"
+    run_process q-meta "$AGENT_META_BINARY --config-file $NEUTRON_CONF --config-file $Q_META_CONF_FILE" "devstack@q-svc.service"
+    run_process q-metering "$AGENT_METERING_BINARY --config-file $NEUTRON_CONF --config-file $METERING_AGENT_CONF_FILENAME" "devstack@q-svc.service"
 }
 
 # Start running processes, including screen

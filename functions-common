@@ -1538,9 +1538,10 @@ function install_bindep {
 function write_user_unit_file {
     local service=$1
     local command="$2"
-    local group=$3
-    local user=$4
-    local env_vars="$5"
+    local after="$3"
+    local group=$4
+    local user=$5
+    local env_vars="$6"
     local extra=""
     if [[ -n "$group" ]]; then
         extra="Group=$group"
@@ -1549,6 +1550,10 @@ function write_user_unit_file {
     mkdir -p $SYSTEMD_DIR
 
     iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
+    if [[ -n "$after" ]]; then
+        iniset -sudo $unitfile "Unit" "After" "$after"
+    fi
+
     iniset -sudo $unitfile "Service" "Environment" "\"PATH=$PATH\""
     iniset -sudo $unitfile "Service" "User" "$user"
     iniset -sudo $unitfile "Service" "ExecStart" "$command"
@@ -1632,24 +1637,25 @@ EOF
 function _run_under_systemd {
     local service=$1
     local command="$2"
+    local after="$3"
     local cmd=$command
     # sanity check the command
     _common_systemd_pitfalls "$cmd"
 
     local systemd_service="devstack@$service.service"
-    local group=$3
-    local user=${4:-$STACK_USER}
+    local group=$4
+    local user=${5:-$STACK_USER}
     if [[ -z "$user" ]]; then
         user=$STACK_USER
     fi
-    local env_vars="$5"
+    local env_vars="$6"
     if [[ "$command" =~ "uwsgi" ]] ; then
         if [[ "$GLOBAL_VENV" == "True" ]] ; then
             cmd="$cmd --venv $DEVSTACK_VENV"
         fi
         write_uwsgi_user_unit_file $systemd_service "$cmd" "$group" "$user" "$env_vars"
     else
-        write_user_unit_file $systemd_service "$cmd" "$group" "$user" "$env_vars"
+        write_user_unit_file $systemd_service "$cmd" "$after" "$group" "$user" "$env_vars"
     fi
 
     $SYSTEMCTL enable $systemd_service
@@ -1675,15 +1681,16 @@ function is_running {
 function run_process {
     local service=$1
     local command="$2"
-    local group=$3
-    local user=$4
-    local env_vars="$5"
+    local after="$3"
+    local group=$4
+    local user=$5
+    local env_vars="$6"
 
     local name=$service
 
     time_start "run_process"
     if is_service_enabled $service; then
-        _run_under_systemd "$name" "$command" "$group" "$user" "$env_vars"
+        _run_under_systemd "$name" "$command" "$after" "$group" "$user" "$env_vars"
     fi
     time_stop "run_process"
 }

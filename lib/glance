@@ -619,9 +619,9 @@ function start_glance {
     fi
 
     if [[ "$GLANCE_STANDALONE" == False ]]; then
-        run_process g-api "$(which uwsgi) --procname-prefix glance-api --ini $GLANCE_UWSGI_CONF"
+        run_process g-api "$(which uwsgi) --procname-prefix glance-api --ini $GLANCE_UWSGI_CONF" "devstack@keystone.service"
     else
-        run_process g-api "$GLANCE_BIN_DIR/glance-api --config-dir=$GLANCE_CONF_DIR"
+        run_process g-api "$GLANCE_BIN_DIR/glance-api --config-dir=$GLANCE_CONF_DIR" "devstack@keystone.service"
     fi
 
     if is_service_enabled g-api-r; then

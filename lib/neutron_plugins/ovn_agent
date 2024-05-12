@@ -259,7 +259,7 @@ function _run_process {
 
     echo "Starting $service executed command": $cmd
 
-    write_user_unit_file $systemd_service "$cmd" "$group" "$user"
+    write_user_unit_file $systemd_service "$cmd" "" "$group" "$user"
     iniset -sudo $unit_file "Service" "Type" "forking"
     iniset -sudo $unit_file "Service" "RemainAfterExit" "yes"
     iniset -sudo $unit_file "Service" "KillMode" "mixed"
@@ -764,20 +764,20 @@ function start_ovn {
     if is_service_enabled ovn-controller-vtep ; then
         if [[ "$OVN_BUILD_FROM_SOURCE" == "True" ]]; then
             local cmd="$OVS_BINDIR/ovn-controller-vtep --log-file --pidfile --detach --ovnsb-db=$OVN_SB_REMOTE"
-            _run_process ovn-controller-vtep "$cmd" "" "$STACK_GROUP" "root" "$OVN_RUNDIR"
+            _run_process ovn-controller-vtep "$cmd" "devstack@keystone.service" "" "$STACK_GROUP" "root" "$OVN_RUNDIR"
         else
             _start_process "$OVN_CONTROLLER_VTEP_SERVICE"
         fi
     fi
 
     if is_service_enabled q-ovn-metadata-agent neutron-ovn-metadata-agent; then
-        run_process q-ovn-metadata-agent "$NEUTRON_OVN_BIN_DIR/$NEUTRON_OVN_METADATA_BINARY --config-file $OVN_META_CONF"
+        run_process q-ovn-metadata-agent "$NEUTRON_OVN_BIN_DIR/$NEUTRON_OVN_METADATA_BINARY --config-file $OVN_META_CONF" "devstack@keystone.service"
         # Format logging
         setup_logging $OVN_META_CONF
     fi
 
     if is_service_enabled q-ovn-agent neutron-ovn-agent; then
-        run_process q-ovn-agent "$NEUTRON_OVN_BIN_DIR/$NEUTRON_OVN_AGENT_BINARY --config-file $OVN_AGENT_CONF"
+        run_process q-ovn-agent "$NEUTRON_OVN_BIN_DIR/$NEUTRON_OVN_AGENT_BINARY --config-file $OVN_AGENT_CONF" "devstack@keystone.service"
         # Format logging
         setup_logging $OVN_AGENT_CONF
     fi

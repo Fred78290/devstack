@@ -996,14 +996,14 @@ function start_nova_api {
     export PATH=$NOVA_BIN_DIR:$PATH
 
     if [ "$NOVA_USE_MOD_WSGI" == "False" ]; then
-        run_process n-api "$NOVA_BIN_DIR/nova-api"
+        run_process n-api "$NOVA_BIN_DIR/nova-api" "devstack@keystone.service"
         nova_url=$service_protocol://$SERVICE_HOST:$service_port
         # Start proxy if tsl enabled
         if is_service_enabled tls-proxy; then
             start_tls_proxy nova '*' $NOVA_SERVICE_PORT $NOVA_SERVICE_HOST $NOVA_SERVICE_PORT_INT
         fi
     else
-        run_process "n-api" "$(which uwsgi) --procname-prefix nova-api --ini $NOVA_UWSGI_CONF"
+        run_process "n-api" "$(which uwsgi) --procname-prefix nova-api --ini $NOVA_UWSGI_CONF" "devstack@keystone.service"
         nova_url=$service_protocol://$SERVICE_HOST/compute/v2.1/
     fi
 
@@ -1074,11 +1074,11 @@ function start_nova_compute {
         # The group **$LIBVIRT_GROUP** is added to the current user in this script.
         # ``sg`` is used in run_process to execute nova-compute as a member of the
         # **$LIBVIRT_GROUP** group.
-        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF" $LIBVIRT_GROUP
+        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF" "devstack@keystone.service" $LIBVIRT_GROUP
     elif [[ "$VIRT_DRIVER" = 'lxd' ]]; then
-        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF" $LXD_GROUP
+        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF" "devstack@keystone.service" $LXD_GROUP
     elif [[ "$VIRT_DRIVER" = 'docker' || "$VIRT_DRIVER" = 'zun' ]]; then
-        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF" $DOCKER_GROUP
+        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF" "devstack@keystone.service" $DOCKER_GROUP
     elif [[ "$VIRT_DRIVER" = 'fake' ]]; then
         local i
         for i in `seq 1 $NUMBER_FAKE_NOVA_COMPUTE`; do
@@ -1087,13 +1087,13 @@ function start_nova_compute {
             # gets its own configuration and own log file.
             local fake_conf="${NOVA_FAKE_CONF}-${i}"
             iniset $fake_conf DEFAULT host "${HOSTNAME}${i}"
-            run_process "n-cpu-${i}" "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF --config-file $fake_conf"
+            run_process "n-cpu-${i}" "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF --config-file $fake_conf" "devstack@keystone.service"
         done
     else
         if is_service_enabled n-cpu && [[ -r $NOVA_PLUGINS/hypervisor-$VIRT_DRIVER ]]; then
             start_nova_hypervisor
         fi
-        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF"
+        run_process n-cpu "$NOVA_BIN_DIR/nova-compute --config-file $NOVA_CPU_CONF" "devstack@keystone.service"
     fi
 
     export PATH=$old_path
@@ -1107,11 +1107,11 @@ function start_nova_rest {
 
     local compute_cell_conf=$NOVA_CONF
 
-    run_process n-sch "$NOVA_BIN_DIR/nova-scheduler --config-file $compute_cell_conf"
+    run_process n-sch "$NOVA_BIN_DIR/nova-scheduler --config-file $compute_cell_conf" "devstack@keystone.service"
     if [ "$NOVA_USE_MOD_WSGI" == "False" ]; then
-        run_process n-api-meta "$NOVA_BIN_DIR/nova-api-metadata --config-file $compute_cell_conf"
+        run_process n-api-meta "$NOVA_BIN_DIR/nova-api-metadata --config-file $compute_cell_conf" "devstack@keystone.service"
     else
-        run_process n-api-meta "$(which uwsgi) --procname-prefix nova-api-meta --ini $NOVA_METADATA_UWSGI_CONF"
+        run_process n-api-meta "$(which uwsgi) --procname-prefix nova-api-meta --ini $NOVA_METADATA_UWSGI_CONF" "devstack@keystone.service"
     fi
 
     export PATH=$old_path
@@ -1136,17 +1136,17 @@ function start_nova_console_proxies {
     local api_cell_conf=$NOVA_CONF
     # console proxies run globally for singleconductor, else they run per cell
     if [[ "${CELLSV2_SETUP}" == "singleconductor" ]]; then
-        run_process n-novnc "$NOVA_BIN_DIR/nova-novncproxy --config-file $api_cell_conf --web $NOVNC_WEB_DIR"
-        run_process n-spice "$NOVA_BIN_DIR/nova-spicehtml5proxy --config-file $api_cell_conf --web $SPICE_WEB_DIR"
-        run_process n-sproxy "$NOVA_BIN_DIR/nova-serialproxy --config-file $api_cell_conf"
+        run_process n-novnc "$NOVA_BIN_DIR/nova-novncproxy --config-file $api_cell_conf --web $NOVNC_WEB_DIR" "devstack@keystone.service"
+        run_process n-spice "$NOVA_BIN_DIR/nova-spicehtml5proxy --config-file $api_cell_conf --web $SPICE_WEB_DIR" "devstack@keystone.service"
+        run_process n-sproxy "$NOVA_BIN_DIR/nova-serialproxy --config-file $api_cell_conf" "devstack@keystone.service"
     else
         enable_nova_console_proxies
         for i in $(seq 1 $NOVA_NUM_CELLS); do
             local conf
             conf=$(conductor_conf $i)
-            run_process n-novnc-cell${i} "$NOVA_BIN_DIR/nova-novncproxy --config-file $conf --web $NOVNC_WEB_DIR"
-            run_process n-spice-cell${i} "$NOVA_BIN_DIR/nova-spicehtml5proxy --config-file $conf --web $SPICE_WEB_DIR"
-            run_process n-sproxy-cell${i} "$NOVA_BIN_DIR/nova-serialproxy --config-file $conf"
+            run_process n-novnc-cell${i} "$NOVA_BIN_DIR/nova-novncproxy --config-file $conf --web $NOVNC_WEB_DIR" "devstack@keystone.service"
+            run_process n-spice-cell${i} "$NOVA_BIN_DIR/nova-spicehtml5proxy --config-file $conf --web $SPICE_WEB_DIR" "devstack@keystone.service"
+            run_process n-sproxy-cell${i} "$NOVA_BIN_DIR/nova-serialproxy --config-file $conf" "devstack@keystone.service"
         done
     fi
 
@@ -1165,19 +1165,19 @@ function enable_nova_fleet {
 function start_nova_conductor {
     if [[ "${CELLSV2_SETUP}" == "singleconductor" ]]; then
         echo "Starting nova-conductor in a cellsv1-compatible way"
-        run_process n-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF"
+        run_process n-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF" "devstack@keystone.service"
         return
     fi
 
     enable_nova_fleet
     if is_service_enabled n-super-cond; then
-        run_process n-super-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF"
+        run_process n-super-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF" "devstack@keystone.service"
     fi
     for i in $(seq 1 $NOVA_NUM_CELLS); do
         if is_service_enabled n-cond-cell${i}; then
             local conf
             conf=$(conductor_conf $i)
-            run_process n-cond-cell${i} "$NOVA_BIN_DIR/nova-conductor --config-file $conf"
+            run_process n-cond-cell${i} "$NOVA_BIN_DIR/nova-conductor --config-file $conf" "devstack@keystone.service"
         fi
     done
 }
