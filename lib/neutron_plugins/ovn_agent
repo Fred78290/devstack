@@ -407,8 +407,10 @@ function install_ovn {
         install_package $(get_packages ovn)
     fi
 
-    # Ensure that the OVS commands are accessible in the PATH
-    export PATH=$OVS_BINDIR:$PATH
+    # Ensure that the OVS commands are accessible in the PATH and bind /usr/bin/ /bin.... existing python
+    if [ ! -f "${OVS_BINDIR}/python3" ]; then
+        export PATH=$OVS_BINDIR:$PATH
+    fi
 
     # Archive log files and create new
     local log_archive_dir=$LOGDIR/archive
