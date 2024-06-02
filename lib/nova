@@ -1165,19 +1165,19 @@ function enable_nova_fleet {
 function start_nova_conductor {
     if [[ "${CELLSV2_SETUP}" == "singleconductor" ]]; then
         echo "Starting nova-conductor in a cellsv1-compatible way"
-        run_process n-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF" "devstack@keystone.service"
+        run_process n-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF" "devstack@keystone.service libvirtd.service"
         return
     fi
 
     enable_nova_fleet
     if is_service_enabled n-super-cond; then
-        run_process n-super-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF" "devstack@keystone.service"
+        run_process n-super-cond "$NOVA_BIN_DIR/nova-conductor --config-file $NOVA_COND_CONF" "devstack@keystone.service libvirtd.service"
     fi
     for i in $(seq 1 $NOVA_NUM_CELLS); do
         if is_service_enabled n-cond-cell${i}; then
             local conf
             conf=$(conductor_conf $i)
-            run_process n-cond-cell${i} "$NOVA_BIN_DIR/nova-conductor --config-file $conf" "devstack@keystone.service"
+            run_process n-cond-cell${i} "$NOVA_BIN_DIR/nova-conductor --config-file $conf" "devstack@keystone.service libvirtd.service"
         fi
     done
 }
