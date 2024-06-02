@@ -829,6 +829,7 @@ HOST_IPV6=$(get_default_host_ip "" "" "$HOST_IP_IFACE" "$HOST_IPV6" "inet6")
 
 # Whether or not the port_security extension should be enabled for Neutron.
 NEUTRON_PORT_SECURITY=$(trueorfalse True NEUTRON_PORT_SECURITY)
+NEUTRON_DOMAIN_NAME=${NEUTRON_DOMAIN_NAME:=openstackgate.local}
 
 # SERVICE IP version
 # This is the IP version that services should be listening on, as well
