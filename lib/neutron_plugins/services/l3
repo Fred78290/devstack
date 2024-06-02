@@ -84,16 +84,20 @@ IPV6_ADDRS_SAFE_TO_USE=${IPV6_ADDRS_SAFE_TO_USE:-fd$IPV6_GLOBAL_ID::/56}
 # if we got larger than a /64 safe to use, we only use the first /64 to
 # avoid side effects outlined in rfc7421
 FIXED_RANGE_V6=${FIXED_RANGE_V6:-$(echo $IPV6_ADDRS_SAFE_TO_USE | awk -F '/' '{ print $1"/"($2>63 ? $2 : 64) }')}
-IPV6_PRIVATE_NETWORK_GATEWAY=${IPV6_PRIVATE_NETWORK_GATEWAY:-}
 IPV6_PUBLIC_RANGE=${IPV6_PUBLIC_RANGE:-2001:db8::/64}
 IPV6_PUBLIC_NETWORK_GATEWAY=${IPV6_PUBLIC_NETWORK_GATEWAY:-2001:db8::2}
+IPV6_PUBLIC_NETWORK_DNS=${IPV6_PUBLIC_NETWORK_DNS:-}
 IPV6_ROUTER_GW_IP=${IPV6_ROUTER_GW_IP:-2001:db8::1}
+IPV6_PRIVATE_NETWORK_GATEWAY=${IPV6_PRIVATE_NETWORK_GATEWAY:-}
+IPV6_PRIVATE_NETWORK_DNS=${IPV6_PRIVATE_NETWORK_DNS:-$IPV6_PUBLIC_NETWORK_GATEWAY}
 
 # Gateway and subnet defaults, in case they are not customized in localrc
-NETWORK_GATEWAY=${NETWORK_GATEWAY:-}
 PUBLIC_NETWORK_GATEWAY=${PUBLIC_NETWORK_GATEWAY:-}
+PUBLIC_NETWORK_DNS=${PUBLIC_NETWORK_DNS:-}
 PRIVATE_SUBNET_NAME=${PRIVATE_SUBNET_NAME:-"private-subnet"}
 PUBLIC_SUBNET_NAME=${PUBLIC_SUBNET_NAME:-"public-subnet"}
+NETWORK_GATEWAY=${NETWORK_GATEWAY:-}
+NETWORK_DNS=${NETWORK_GATEWAY:-$PUBLIC_NETWORK_DNS}
 
 # Subnetpool defaults
 USE_SUBNETPOOL=${USE_SUBNETPOOL:-True}
@@ -179,7 +183,7 @@ function create_neutron_initial_network {
             if [ -z $SUBNETPOOL_V4_ID ]; then
                 fixed_range_v4=$FIXED_RANGE
             fi
-            SUBNET_ID=$(openstack --os-cloud devstack --os-region "$REGION_NAME" subnet create --ip-version 4 ${ALLOCATION_POOL:+--allocation-pool $ALLOCATION_POOL} $PROVIDER_SUBNET_NAME --gateway $NETWORK_GATEWAY ${SUBNETPOOL_V4_ID:+--subnet-pool $SUBNETPOOL_V4_ID} --network $NET_ID ${fixed_range_v4:+--subnet-range $fixed_range_v4} -f value -c id)
+            SUBNET_ID=$(openstack --os-cloud devstack --os-region "$REGION_NAME" subnet create --ip-version 4 ${ALLOCATION_POOL:+--allocation-pool $ALLOCATION_POOL} $PROVIDER_SUBNET_NAME --gateway $NETWORK_GATEWAY ${NETWORK_DNS:+--dns-nameserver $NETWORK_DNS} ${SUBNETPOOL_V4_ID:+--subnet-pool $SUBNETPOOL_V4_ID} --network $NET_ID ${fixed_range_v4:+--subnet-range $fixed_range_v4} -f value -c id)
             die_if_not_set $LINENO SUBNET_ID "Failure creating SUBNET_ID for $PROVIDER_SUBNET_NAME"
         fi
 
@@ -189,7 +193,7 @@ function create_neutron_initial_network {
             if [ -z $SUBNETPOOL_V6_ID ]; then
                 fixed_range_v6=$IPV6_PROVIDER_FIXED_RANGE
             fi
-            IPV6_SUBNET_ID=$(openstack --os-cloud devstack --os-region "$REGION_NAME" subnet create --ip-version 6 --gateway $IPV6_PROVIDER_NETWORK_GATEWAY $IPV6_PROVIDER_SUBNET_NAME ${SUBNETPOOL_V6_ID:+--subnet-pool $SUBNETPOOL_V6_ID} --network $NET_ID ${fixed_range_v6:+--subnet-range $fixed_range_v6} -f value -c id)
+            IPV6_SUBNET_ID=$(openstack --os-cloud devstack --os-region "$REGION_NAME" subnet create --ip-version 6 --gateway $IPV6_PROVIDER_NETWORK_GATEWAY ${IPV6_PROVIDER_NETWORK_DNS:+--dns-nameserver $IPV6_PROVIDER_NETWORK_DNS} $IPV6_PROVIDER_SUBNET_NAME ${SUBNETPOOL_V6_ID:+--subnet-pool $SUBNETPOOL_V6_ID} --network $NET_ID ${fixed_range_v6:+--subnet-range $fixed_range_v6} -f value -c id)
             die_if_not_set $LINENO IPV6_SUBNET_ID "Failure creating IPV6_SUBNET_ID for $IPV6_PROVIDER_SUBNET_NAME"
         fi
 
@@ -258,7 +262,9 @@ function _neutron_create_private_subnet_v4 {
     if [[ -n "$NETWORK_GATEWAY" ]]; then
         subnet_params+="--gateway $NETWORK_GATEWAY "
     fi
-
+    if [[ -n "$NETWORK_DNS" ]]; then
+        subnet_params+="--dns-nameserver $NETWORK_DNS "
+    fi
     subnet_params+="${SUBNETPOOL_V4_ID:+--subnet-pool $SUBNETPOOL_V4_ID} "
     subnet_params+="${fixed_range_v4:+--subnet-range $fixed_range_v4} "
     subnet_params+="--network $NET_ID $PRIVATE_SUBNET_NAME"
@@ -280,6 +286,9 @@ function _neutron_create_private_subnet_v6 {
     if [[ -n "$IPV6_PRIVATE_NETWORK_GATEWAY" ]]; then
         subnet_params+="--gateway $IPV6_PRIVATE_NETWORK_GATEWAY "
     fi
+    if [[ -n "$IPV6_PRIVATE_NETWORK_DNS" ]]; then
+        subnet_params+="--dns-nameserver $IPV6_PRIVATE_NETWORK_DNS "
+    fi
     subnet_params+="${SUBNETPOOL_V6_ID:+--subnet-pool $SUBNETPOOL_V6_ID} "
     subnet_params+="${fixed_range_v6:+--subnet-range $fixed_range_v6} "
     subnet_params+="$ipv6_modes --network $NET_ID $IPV6_PRIVATE_SUBNET_NAME "
@@ -296,6 +305,9 @@ function _neutron_create_public_subnet_v4 {
     if [[ -n "$PUBLIC_NETWORK_GATEWAY" ]]; then
         subnet_params+="--gateway $PUBLIC_NETWORK_GATEWAY "
     fi
+    if [[ -n "$PUBLIC_NETWORK_DNS" ]]; then
+        subnet_params+="--dns-nameserver $PUBLIC_NETWORK_DNS "
+    fi
     subnet_params+="--network $EXT_NET_ID --subnet-range $FLOATING_RANGE --no-dhcp "
     subnet_params+="$PUBLIC_SUBNET_NAME"
     local id_and_ext_gw_ip
@@ -309,6 +321,9 @@ function _neutron_create_public_subnet_v6 {
     local subnet_params="--ip-version 6 "
     subnet_params+="--gateway $IPV6_PUBLIC_NETWORK_GATEWAY "
     subnet_params+="--network $EXT_NET_ID --subnet-range $IPV6_PUBLIC_RANGE --no-dhcp "
+    if [[ -n "$IPV6_PUBLIC_NETWORK_DNS" ]]; then
+        subnet_params+="--dns-nameserver $IPV6_PUBLIC_NETWORK_DNS "
+    fi
     subnet_params+="$IPV6_PUBLIC_SUBNET_NAME"
     local ipv6_id_and_ext_gw_ip
     ipv6_id_and_ext_gw_ip=$(openstack --os-cloud devstack-admin --os-region "$REGION_NAME" subnet create $subnet_params | grep -e 'gateway_ip' -e ' id ')
