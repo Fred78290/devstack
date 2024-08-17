@@ -357,6 +357,19 @@ function configure_tempest {
         fi
     fi
 
+    if is_service_enabled glance; then
+        git_clone $OSTESTIMAGES_REPO $OSTESTIMAGES_DIR $OSTESTIMAGES_BRANCH
+        pushd $OSTESTIMAGES_DIR
+        tox -egenerate
+        popd
+        iniset $TEMPEST_CONFIG image images_manifest_file ${OSTESTIMAGES_DIR}/images/manifest.yaml
+        local image_conversion
+        image_conversion=$(iniget $GLANCE_IMAGE_IMPORT_CONF image_conversion output_format)
+        if [[ -n "$image_conversion" ]]; then
+            iniset $TEMPEST_CONFIG image-feature-enabled image_conversion True
+        fi
+    fi
+
     iniset $TEMPEST_CONFIG network project_network_cidr $FIXED_RANGE
 
     ssh_connect_method=${TEMPEST_SSH_CONNECT_METHOD:-$ssh_connect_method}
